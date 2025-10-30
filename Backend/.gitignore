@@ -1,0 +1,59 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# Dataset (large files)
+model_training/PPE/train/
+model_training/PPE/test/
+model_training/PPE/valid/
+*.jpg
+*.jpeg
+*.png
+*.gif
+!README*.png
+
+# Training runs and outputs
+runs/
+model_training/runs/
+*.pt
+!model_weights/best.pt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+
+# Temporary files
+*.tmp
+*.bak
+*.cache

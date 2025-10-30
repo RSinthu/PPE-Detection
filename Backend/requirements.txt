@@ -1,0 +1,31 @@
+# Deep Learning & Computer Vision
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
+ultralytics==8.3.221
+opencv-python==4.12.0.88
+cvzone==1.6.1
+
+# Scientific Computing & Image Processing
+numpy==2.2.6
+scipy==1.16.2
+scikit-image==0.25.2
+pillow==11.3.0
+imageio==2.37.0
+
+# Data Processing
+polars==1.34.0
+pandas 
+
+# Visualization
+matplotlib==3.10.7
+
+# Jupyter & Development Tools
+ipykernel==7.0.1
+ipython==9.6.0
+jupyter_client==8.6.3
+
+# Utilities
+PyYAML==6.0.3
+requests==2.32.5
+tqdm  
