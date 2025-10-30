@@ -36,12 +36,23 @@ function App() {
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const animationFrameRef = useRef(null);
+  const isDetectingRef = useRef(false);
+  const lastDetectionsRef = useRef([]);
 
   // Check backend health
   useEffect(() => {
     checkHealth();
     const interval = setInterval(checkHealth, 10000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   const checkHealth = async () => {
@@ -57,6 +68,14 @@ function App() {
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (!file) return;
+
+    // Cancel any ongoing video processing
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    setIsPlaying(false);
+    isDetectingRef.current = false;
+    lastDetectionsRef.current = [];
 
     setCurrentFile(file);
     const isVideoFile = file.type.startsWith('video/');
@@ -97,6 +116,7 @@ function App() {
 
         if (data.success) {
           setDetections(data.detections);
+          ctx.drawImage(img, 0, 0);
           drawDetections(ctx, data.detections, canvas.width, canvas.height);
           updateStats(data.detections);
           generateNotifications(data.detections);
@@ -129,7 +149,7 @@ function App() {
     if (video.paused) {
       video.play();
       setIsPlaying(true);
-      processVideoFrame();
+      renderVideoLoop();
     } else {
       video.pause();
       setIsPlaying(false);
@@ -139,57 +159,90 @@ function App() {
     }
   };
 
-  const processVideoFrame = async () => {
-    if (!isPlaying) return;
-
+  // Continuous rendering loop - draws video frame + last known detections
+  const renderVideoLoop = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    if (!video || video.paused || video.ended) {
+      setIsPlaying(false);
+      return;
+    }
 
-    canvas.toBlob(async (blob) => {
+    // Always draw current video frame
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Draw last known detections on top
+    if (lastDetectionsRef.current.length > 0) {
+      drawDetections(ctx, lastDetectionsRef.current, canvas.width, canvas.height);
+    }
+
+    // Trigger detection every few frames (not every frame)
+    if (!isDetectingRef.current) {
+      detectFrame();
+    }
+
+    // Continue loop
+    animationFrameRef.current = requestAnimationFrame(renderVideoLoop);
+  };
+
+  // Async detection that doesn't block rendering
+  const detectFrame = async () => {
+    if (isDetectingRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    isDetectingRef.current = true;
+
+    try {
+      // Create temporary canvas for detection
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert to blob
+      const blob = await new Promise(resolve => {
+        tempCanvas.toBlob(resolve, 'image/jpeg', 0.7);
+      });
+
       const formData = new FormData();
       formData.append('file', blob, 'frame.jpg');
 
-      try {
-        const response = await fetch(`${API_URL}/detect`, {
-          method: 'POST',
-          body: formData
-        });
+      const response = await fetch(`${API_URL}/detect`, {
+        method: 'POST',
+        body: formData
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (data.success) {
-          setDetections(data.detections);
-          drawDetections(ctx, data.detections, canvas.width, canvas.height);
-          updateStats(data.detections);
-          generateNotifications(data.detections);
-        }
-      } catch (error) {
-        console.error('Frame detection error:', error);
+      if (data.success) {
+        // Update stored detections
+        lastDetectionsRef.current = data.detections;
+        setDetections(data.detections);
+        updateStats(data.detections);
+        generateNotifications(data.detections);
       }
-
-      if (isPlaying && !video.ended) {
-        animationFrameRef.current = requestAnimationFrame(processVideoFrame);
-      }
-    }, 'image/jpeg', 0.8);
+    } catch (error) {
+      console.error('Frame detection error:', error);
+    } finally {
+      isDetectingRef.current = false;
+    }
   };
 
   const drawDetections = (ctx, detections, width, height) => {
-    const video = videoRef.current;
-
-    if (isVideo && video && !video.paused) {
-      ctx.drawImage(video, 0, 0, width, height);
-    }
-
     detections.forEach(det => {
       const color = classColors[det.class] || '#3b82f6';
 
+      // Draw bounding box
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
       ctx.strokeRect(det.x, det.y, det.w, det.h);
 
+      // Draw label background
       const label = `${det.class} ${Math.round(det.confidence * 100)}%`;
       ctx.font = 'bold 14px Arial';
       const textWidth = ctx.measureText(label).width;
@@ -203,6 +256,7 @@ function App() {
         26
       );
 
+      // Draw label text
       ctx.fillStyle = '#ffffff';
       ctx.fillText(
         label,

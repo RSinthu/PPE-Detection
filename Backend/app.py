@@ -11,7 +11,7 @@ CORS(app)
 
 # Load YOLO model
 try:
-    model = YOLO('best.pt')
+    model = YOLO('./model_weights/best.pt')
     model_loaded = True
     print("✓ YOLO model loaded successfully")
 except Exception as e:

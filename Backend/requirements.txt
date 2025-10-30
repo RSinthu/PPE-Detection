@@ -1,7 +1,14 @@
-# Deep Learning & Computer Vision
-torch==2.5.1
-torchvision==0.20.1
-torchaudio==2.5.1
+--index-url https://pypi.org/simple
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+
+# Deep Learning & Computer Vision (GPU-enabled)
+torch==2.9.0
+torchvision==0.24.0
+torchaudio==2.9.0
 ultralytics==8.3.221
 opencv-python==4.12.0.88
 cvzone==1.6.1
@@ -28,4 +35,4 @@ jupyter_client==8.6.3
 # Utilities
 PyYAML==6.0.3
 requests==2.32.5
-tqdm  
+tqdm
